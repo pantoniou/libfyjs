@@ -1,0 +1,4 @@
+test-suite-data/
+*.log
+*.trs
+

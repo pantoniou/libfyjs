@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libfyjs
+Description: Fancy JSON schema (and more) validator library
+Version: @PACKAGE_VERSION@
+Libs: -L${libdir} -lfyjs-@MAJOR@.@MINOR@ @LIBFYJS_LIBS@
+Cflags: -I${includedir} @LIBFYJS_CFLAGS@
