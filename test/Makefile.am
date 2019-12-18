@@ -26,9 +26,14 @@ TESTS =
 if HAVE_NETWORK
 if HAVE_GIT
 
+# latest (draft2019-09)
 TESTS += testsuite.test testsuite-optional.test testsuite-optional-format.test
 
+# draft7
 TESTS += testsuite-draft7.test testsuite-draft7-optional.test testsuite-draft7-optional-format.test
+
+# draft6
+TESTS += testsuite-draft6.test testsuite-draft6-optional.test
 
 testsuite.test testsuite-optional.test testsuite-optional-format.test: test-suite-data spec
 

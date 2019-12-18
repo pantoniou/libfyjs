@@ -610,13 +610,15 @@ static int validate_enum(struct fyjs_validate_ctx *vc, struct fy_node *fyn, stru
 static int validate_numeric(struct fyjs_validate_ctx *vc, struct fy_node *fyn, struct fy_node *fynt,
 			    struct fy_node *fynt_v, const char *keyword)
 {
-	struct fy_node *fynt_keyword;
+	struct fy_node *fynt_keyword, *fynt_exclusive;
 	enum fyjs_type type, vtype;
 	fyjs_numeric constraint, value;
 	bool res;
 	const char *constraint_str;
 	const char *value_str;
-	int ret = ERROR;
+	const char *exclusive_str;
+	int ret = ERROR, cmp;
+	bool is_exclusive;
 
 	/* get const node */
 	fynt_keyword = fynt_v;
@@ -626,8 +628,17 @@ static int validate_numeric(struct fyjs_validate_ctx *vc, struct fy_node *fyn, s
 		return VALID;
 
 	type = validate_type_node(fynt_keyword);
-	if (type != fyjs_number && type != fyjs_integer)
+	if (type != fyjs_number && type != fyjs_integer) {
+
+		/* draft4 exclusiveMinimums and maximums are booleans */
+		/* so ignore them */
+		if (type == fyjs_boolean &&
+			(!strcmp(keyword, "exclusiveMaximum") ||
+			 !strcmp(keyword, "exclusiveMinimum")))
+			return VALID;
+
 		return ERROR_NUMERIC_CONSTRAINT_NAN;
+	}
 
 	constraint_str = fy_node_get_scalar0(fynt_keyword);
 	value_str = fy_node_get_scalar0(fyn);
@@ -654,25 +665,57 @@ static int validate_numeric(struct fyjs_validate_ctx *vc, struct fy_node *fyn, s
 			goto err_out;
 		}
 	} else if (!strcmp(keyword, "maximum")) {
-		res = fyjs_numeric_cmp(value, constraint) <= 0;
+
+#if 1
+		is_exclusive = (fynt_exclusive = fy_node_mapping_lookup_value_by_simple_key(
+				fynt, "exclusiveMaximum", FY_NT)) &&
+		    validate_type_node(fynt_exclusive) == fyjs_boolean &&
+		    (exclusive_str = fy_node_get_scalar0(fynt_exclusive)) != NULL &&
+		    !strcmp(exclusive_str, "true");
+#else
+		is_exclusive = false;
+#endif
+
+		cmp = fyjs_numeric_cmp(value, constraint);
+
+		res = is_exclusive ? (cmp < 0) : (cmp <= 0);
 		if (!res) {
 			ret = INVALID_MAXIMUM_OVER;
 			goto err_out;
 		}
 	} else if (!strcmp(keyword, "exclusiveMaximum")) {
-		res = fyjs_numeric_cmp(value, constraint) < 0;
+
+		cmp = fyjs_numeric_cmp(value, constraint);
+
+		res = cmp < 0;
 		if (!res) {
 			ret = INVALID_EXCLUSIVE_MAXIMUM_OVER;
 			goto err_out;
 		}
 	} else if (!strcmp(keyword, "minimum")) {
-		res = fyjs_numeric_cmp(value, constraint) >= 0;
+
+#if 1
+		is_exclusive = (fynt_exclusive = fy_node_mapping_lookup_value_by_simple_key(
+				fynt, "exclusiveMinimum", FY_NT)) &&
+		    validate_type_node(fynt_exclusive) == fyjs_boolean &&
+		    (exclusive_str = fy_node_get_scalar0(fynt_exclusive)) != NULL &&
+		    !strcmp(exclusive_str, "true");
+#else
+		is_exclusive = false;
+#endif
+
+		cmp = fyjs_numeric_cmp(value, constraint);
+
+		res = is_exclusive ? (cmp > 0) : (cmp >= 0);
 		if (!res) {
 			ret = INVALID_MINIMUM_UNDER;
 			goto err_out;
 		}
 	} else if (!strcmp(keyword, "exclusiveMinimum")) {
-		res = fyjs_numeric_cmp(value, constraint) > 0;
+
+		cmp = fyjs_numeric_cmp(value, constraint);
+
+		res = cmp > 0;
 		if (!res) {
 			ret = INVALID_EXCLUSIVE_MINIMUM_UNDER;
 			goto err_out;
@@ -2720,8 +2763,8 @@ struct fy_node *deref_ref(struct fyjs_validate_ctx *vc, struct fy_node *fynt, co
 	struct remote *r, *rfound;
 	const char *trest;
 	int trest_len;
-	char *newurl, *newfile, *out_fynt, *ref_url;
-	struct fy_document *fyd;
+	char *newurl = NULL, *newfile = NULL, *out_fynt, *ref_url;
+	struct fy_document *fyd = NULL;
 	bool need_slash;
 	size_t len;
 	struct fy_node *fyn;
