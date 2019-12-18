@@ -30,6 +30,7 @@
 #define TAP_START_DEFAULT		1
 #define TAP_PLAN_DISABLE_DEFAULT	false
 #define EXECUTE_DEFAULT			0
+#define SCHEMA_TYPE_DEFAULT		"jsc-latest"
 
 int debug_level = DEBUG_LEVEL_DEFAULT;
 bool quiet = QUIET_DEFAULT;
@@ -40,6 +41,7 @@ bool tap_plan_disable = TAP_PLAN_DISABLE_DEFAULT;
 int execute = EXECUTE_DEFAULT;
 bool dry_run = false;
 const char *schema = NULL;
+const char *schema_type = SCHEMA_TYPE_DEFAULT;
 
 #define OPT_TOOL			1000
 #define OPT_TESTSUITE			1001
@@ -61,6 +63,7 @@ static struct option lopts[] = {
 	{"quiet",		no_argument,		0,	'q' },
 	{"remote",		required_argument,	0,	'r' },
 	{"schema",		required_argument,	0,	's' },
+	{"schema-type",		required_argument,	0,	't' },
 
 	{"testsuite",		no_argument,		0,	OPT_TESTSUITE },
 	{"validate",		no_argument,		0,	OPT_VALIDATE },
@@ -93,6 +96,10 @@ static void display_usage(FILE *fp, char *progname, int tool_mode)
 						QUIET_DEFAULT ? "true" : "false");
 	fprintf(fp, "\t--remote, -r             : Add a mapping of a remote to directory <url,dir>\n");
 	fprintf(fp, "\t--schema, -s             : Use this validating schema\n");
+	fprintf(fp, "\t--schema-type, -t        : Type of schema (one of jsc-draft[347], \n"
+		    "                             jsc-draft-2019-09, jsc-latest, openapi-2.0, openapi-3.0, \n"
+		    "                             openapi-latest) default is %s\n",
+		    				SCHEMA_TYPE_DEFAULT);
 	fprintf(fp, "\t--read-cache=<file>      : Read cache from file (- means stdin) at start\n");
 	fprintf(fp, "\t--write-cache=<file>     : Write the cache to file (- means stdout) at the end\n");
 	fprintf(fp, "\t--cache=<file>           : Use single read/Write cache\n");
@@ -124,6 +131,31 @@ static const struct fy_parse_cfg cache_cfg = {
 			FYPCF_COLOR_AUTO) | FYPCF_DISABLE_MMAP_OPT,
 };
 
+static int text_to_validation_type(const char *str)
+{
+	if (!str)
+		return -1;
+
+	if (!strcmp(str, "jsc-draft3") || !strcmp(str, "json-schema-draft3"))
+		return FYJSVT_JSON_SCHEMA_DRAFT3;
+	if (!strcmp(str, "jsc-draft4") || !strcmp(str, "json-schema-draft4"))
+		return FYJSVT_JSON_SCHEMA_DRAFT4;
+	if (!strcmp(str, "jsc-draft6") || !strcmp(str, "json-schema-draft6"))
+		return FYJSVT_JSON_SCHEMA_DRAFT6;
+	if (!strcmp(str, "jsc-draft-2019-09") || !strcmp(str, "json-schema-draft-2019-09"))
+		return FYJSVT_JSON_SCHEMA_DRAFT2019_09;
+	if (!strcmp(str, "jsc-latest") || !strcmp(str, "json-schema-latest"))
+		return FYJSVT_JSON_SCHEMA_LATEST;
+	if (!strcmp(str, "openapi-2.0"))
+		return FYJSVT_OPENAPI_SCHEMA_2_0;
+	if (!strcmp(str, "openapi-3.0"))
+		return FYJSVT_OPENAPI_SCHEMA_3_0;
+	if (!strcmp(str, "openapi-latest"))
+		return FYJSVT_OPENAPI_SCHEMA_LATEST;
+
+	return  -1;
+}
+
 int main(int argc, char *argv[])
 {
 	struct fyjs_validate_ctx *vc = NULL;
@@ -142,7 +174,7 @@ int main(int argc, char *argv[])
 	fy_valgrind_check(&argc, &argv);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.type = FYJSVT_JSON_SCHEMA_LATEST;
+	cfg.type = text_to_validation_type(SCHEMA_TYPE_DEFAULT);
 	cfg.verbose = false;
 	cfg.remotes = rcfg;
 
@@ -167,7 +199,7 @@ int main(int argc, char *argv[])
 
 	execute = EXECUTE_DEFAULT;
 
-	while ((opt = getopt_long_only(argc, argv, "d:qr:hv", lopts, &lidx)) != -1) {
+	while ((opt = getopt_long_only(argc, argv, "d:qr:t:hv", lopts, &lidx)) != -1) {
 		switch (opt) {
 		case OPT_VALIDATE:
 		case OPT_TESTSUITE:
@@ -215,6 +247,16 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			schema = optarg;
+			break;
+
+		case 't':
+			j = text_to_validation_type(optarg);
+			if (j < 0) {
+				fprintf(stderr, "bad schema type: %s\n", optarg);
+				goto out;
+			}
+			schema_type = optarg;
+			cfg.type = text_to_validation_type(schema_type);
 			break;
 
 		case OPT_TAP_MODE:

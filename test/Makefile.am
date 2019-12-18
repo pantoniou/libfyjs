@@ -28,7 +28,7 @@ if HAVE_GIT
 
 TESTS += testsuite.test testsuite-optional.test testsuite-optional-format.test
 
-# TESTS += testsuite-draft7.test testsuite-draft7-optional.test testsuite-draft7-optional-format.test
+TESTS += testsuite-draft7.test testsuite-draft7-optional.test testsuite-draft7-optional-format.test
 
 testsuite.test testsuite-optional.test testsuite-optional-format.test: test-suite-data spec
 

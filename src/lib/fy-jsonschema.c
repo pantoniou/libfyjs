@@ -248,114 +248,6 @@ static int validate_one(struct fyjs_validate_ctx *vc, struct fy_node *fyn, struc
 	 	_patha; \
 	})
 
-void fyjs_context_cleanup(struct fyjs_validate_ctx *vc)
-{
-	struct remote *r;
-
-	if (!vc)
-		return;
-
-	fy_document_destroy(vc->fyd_cache);
-	vc->fyd_cache = NULL;
-
-	if (vc->curl_handle)
-		fy_curl_cleanup(vc->curl_handle);
-
-	while (!TAILQ_EMPTY(&vc->rl)) {
-		r = TAILQ_FIRST(&vc->rl);
-		TAILQ_REMOVE(&vc->rl, r, entry);
-		remote_destroy(r);
-	}
-}
-
-int fyjs_context_reset_cache(struct fyjs_validate_ctx *vc)
-{
-	struct fy_node *fyn;
-
-	fy_document_destroy(vc->fyd_cache);
-	vc->fyd_cache = fy_document_create(&doc_cfg);
-	if (!vc->fyd_cache) {
-		fprintf(stderr, "%s: fy_document_create() failed\n", __func__);
-		goto err_out;
-	}
-
-	fyn = fy_node_create_sequence(vc->fyd_cache);
-	if (!fyn) {
-		fprintf(stderr, "%s: fy_node_create_sequence() failed\n", __func__);
-		goto err_out;
-	}
-	fy_document_set_root(vc->fyd_cache, fyn);
-
-	vc->cache_modified = false;
-
-	return 0;
-
-err_out:
-	fy_document_destroy(vc->fyd_cache);
-	vc->fyd_cache = NULL;
-	return -1;
-}
-
-int fyjs_context_setup(struct fyjs_validate_ctx *vc,
-		       const struct fyjs_validate_cfg *cfg)
-{
-	int rc, config, i;
-	struct remote *r;
-
-	if (!vc || !cfg)
-		return -1;
-
-	memset(vc, 0, sizeof(*vc));
-
-	vc->cfg = *cfg;
-	TAILQ_INIT(&vc->rl);
-
-	vc->type = cfg->type;
-	vc->verbose = cfg->verbose;
-	for (i = 0; cfg->remotes && cfg->remotes[i].url; i++) {
-		r = remote_create(cfg->remotes[i].url, cfg->remotes[i].dir);
-		if (!r) {
-			fprintf(stderr, "unable to create remote #%d\n", i);
-			goto err_out;
-		}
-		TAILQ_INSERT_TAIL(&vc->rl, r, entry);
-
-		if (vc->verbose)
-			fprintf(stderr, "remote mapping %s -> %s\n",
-					r->url, r->dir);
-	}
-
-	rc = fyjs_context_reset_cache(vc);
-	if (rc) {
-		fprintf(stderr, "%s: unable to reset cache\n", __func__);
-		goto err_out;
-	}
-
-	vc->curl_handle = fy_curl_init();
-	if (!vc->curl_handle)
-		fprintf(stderr, "warning: CURL not available; no external schemas available\n");
-
-	if (vc->curl_handle)
-		fy_curl_set_verbose(vc->curl_handle, vc->verbose);
-
-	if (vc->verbose)
-		fprintf(stderr, "curl: %s\n", vc->curl_handle ? "enabled" : "disabled");
-
-	rc = pcre_config(PCRE_CONFIG_UTF8, &config);
-	vc->pcre_utf8 = !rc && config;
-
-	if (vc->verbose)
-		fprintf(stderr, "pcre: UTF8 is %ssupported\n", vc->pcre_utf8 ? "" : "not ");
-
-	vc->id_str = "$id";
-	vc->schema_str = "$schema";
-
-	return 0;
-err_out:
-	fyjs_context_cleanup(vc);
-	return -1;
-}
-
 struct fyjs_validate_ctx_state {
 	struct fy_node *fynt_root;
 	int error;
@@ -467,15 +359,6 @@ bool fy_node_compare_json(struct fy_node *fyn1, struct fy_node *fyn2)
 {
 	return fy_node_compare_user(fyn1, fyn2, NULL, NULL, fy_node_scalar_compare_json, NULL);
 }
-
-typedef int (*validate_func)(struct fyjs_validate_ctx *vc, struct fy_node *fyn,
-			    struct fy_node *fynt, struct fy_node *fynt_v);
-
-struct validate_desc {
-	const char *primary;
-	const char **secondary;
-	validate_func func;
-};
 
 static enum fyjs_type validate_type_text(const char *str)
 {
@@ -2629,7 +2512,7 @@ static int validate_format(struct fyjs_validate_ctx *vc, struct fy_node *fyn, st
 		return ERROR_INTERNAL_OUT_OF_MEMORY;
 
 	ret = VALID;
-	for (vd = format_validators; vd->func; vd++) {
+	for (vd = vc->vd_formats; vd->func; vd++) {
 
 		if (strcmp(format_str, vd->primary))
 			continue;
@@ -2787,8 +2670,7 @@ lookup_for_uri_match(struct fyjs_validate_ctx *vc,
 			 strlen(anchor_str) == (size_t)urip->fragment_len &&
 			 !memcmp(anchor_str, urip->fragment, urip->fragment_len))
 			fynt_match = fynt;
-		else if (uri_fragment_only(&urip_id) && uri_fragment_only(urip) &&
-				uri_fragment_eq(&urip_id, urip))
+		else if (urip_id.fragment && urip->fragment && uri_fragment_eq(&urip_id, urip))
 			fynt_match = fynt;	/* draft 7 */
 
 	} else if (!urip->fragment && uri_authority_eq(urip, &urip_base) && uri_path_eq(urip, &urip_base))
@@ -3290,7 +3172,7 @@ static int validate_one(struct fyjs_validate_ctx *vc, struct fy_node *fyn, struc
 
 		ret = VALID;
 		fynt_v = NULL;
-		for (vd = validators; vd->func; vd++) {
+		for (vd = vc->vd_props; vd->func; vd++) {
 
 			fynt_v = fy_node_mapping_lookup_value_by_simple_key(fynt, vd->primary, FY_NT);
 			if (!fynt_v)
@@ -3329,6 +3211,118 @@ out:
 
 	return ret;
 }
+
+void fyjs_context_cleanup(struct fyjs_validate_ctx *vc)
+{
+	struct remote *r;
+
+	if (!vc)
+		return;
+
+	fy_document_destroy(vc->fyd_cache);
+	vc->fyd_cache = NULL;
+
+	if (vc->curl_handle)
+		fy_curl_cleanup(vc->curl_handle);
+
+	while (!TAILQ_EMPTY(&vc->rl)) {
+		r = TAILQ_FIRST(&vc->rl);
+		TAILQ_REMOVE(&vc->rl, r, entry);
+		remote_destroy(r);
+	}
+}
+
+int fyjs_context_reset_cache(struct fyjs_validate_ctx *vc)
+{
+	struct fy_node *fyn;
+
+	fy_document_destroy(vc->fyd_cache);
+	vc->fyd_cache = fy_document_create(&doc_cfg);
+	if (!vc->fyd_cache) {
+		fprintf(stderr, "%s: fy_document_create() failed\n", __func__);
+		goto err_out;
+	}
+
+	fyn = fy_node_create_sequence(vc->fyd_cache);
+	if (!fyn) {
+		fprintf(stderr, "%s: fy_node_create_sequence() failed\n", __func__);
+		goto err_out;
+	}
+	fy_document_set_root(vc->fyd_cache, fyn);
+
+	vc->cache_modified = false;
+
+	return 0;
+
+err_out:
+	fy_document_destroy(vc->fyd_cache);
+	vc->fyd_cache = NULL;
+	return -1;
+}
+
+int fyjs_context_setup(struct fyjs_validate_ctx *vc,
+		       const struct fyjs_validate_cfg *cfg)
+{
+	int rc, config, i;
+	struct remote *r;
+
+	if (!vc || !cfg)
+		return -1;
+
+	memset(vc, 0, sizeof(*vc));
+
+	vc->cfg = *cfg;
+	TAILQ_INIT(&vc->rl);
+
+	vc->type = cfg->type;
+	vc->verbose = cfg->verbose;
+	for (i = 0; cfg->remotes && cfg->remotes[i].url; i++) {
+		r = remote_create(cfg->remotes[i].url, cfg->remotes[i].dir);
+		if (!r) {
+			fprintf(stderr, "unable to create remote #%d\n", i);
+			goto err_out;
+		}
+		TAILQ_INSERT_TAIL(&vc->rl, r, entry);
+
+		if (vc->verbose)
+			fprintf(stderr, "remote mapping %s -> %s\n",
+					r->url, r->dir);
+	}
+
+	rc = fyjs_context_reset_cache(vc);
+	if (rc) {
+		fprintf(stderr, "%s: unable to reset cache\n", __func__);
+		goto err_out;
+	}
+
+	vc->curl_handle = fy_curl_init();
+	if (!vc->curl_handle)
+		fprintf(stderr, "warning: CURL not available; no external schemas available\n");
+
+	if (vc->curl_handle)
+		fy_curl_set_verbose(vc->curl_handle, vc->verbose);
+
+	if (vc->verbose)
+		fprintf(stderr, "curl: %s\n", vc->curl_handle ? "enabled" : "disabled");
+
+	rc = pcre_config(PCRE_CONFIG_UTF8, &config);
+	vc->pcre_utf8 = !rc && config;
+
+	if (vc->verbose)
+		fprintf(stderr, "pcre: UTF8 is %ssupported\n", vc->pcre_utf8 ? "" : "not ");
+
+	vc->id_str = "$id";
+	vc->schema_str = "$schema";
+
+	vc->vd_props = validators;
+	vc->vd_formats = format_validators;
+
+	return 0;
+err_out:
+	fyjs_context_cleanup(vc);
+	return -1;
+}
+
 
 struct fyjs_validate_ctx *
 fyjs_context_create(const struct fyjs_validate_cfg *cfg)

@@ -34,6 +34,15 @@ struct remote {
 
 TAILQ_HEAD(remote_list, remote);
 
+typedef int (*validate_func)(struct fyjs_validate_ctx *vc, struct fy_node *fyn,
+			    struct fy_node *fynt, struct fy_node *fynt_v);
+
+struct validate_desc {
+	const char *primary;
+	const char **secondary;
+	validate_func func;
+};
+
 struct fyjs_validate_ctx {
 	struct fyjs_validate_cfg cfg;
 	enum fyjs_validation_type type;
@@ -57,6 +66,9 @@ struct fyjs_validate_ctx {
 	/* those may change due to spec evolution */
 	const char *id_str;		/* $id */
 	const char *schema_str;		/* $schema */
+
+	const struct validate_desc *vd_props;
+	const struct validate_desc *vd_formats;
 };
 
 #endif
