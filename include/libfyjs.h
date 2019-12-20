@@ -95,6 +95,22 @@ fyjs_validate(struct fyjs_validate_ctx *vc,
 	      struct fy_node *fyn, struct fy_node *fynt)
 	FYJS_EXPORT;
 
+struct fyjs_result {
+	int error;
+	struct fy_node *error_node;
+	struct fy_node *error_rule;
+	const char *msg;
+};
+
+const struct fyjs_result *
+fyjs_results_iterate(struct fyjs_validate_ctx *vc, void **iterp)
+	FYJS_EXPORT;
+
+void fyjs_results_report(struct fyjs_validate_ctx *vc)
+	FYJS_EXPORT;
+
+void fyjs_results_clear(struct fyjs_validate_ctx *vc);
+
 struct fy_document *
 fyjs_load_schema(struct fyjs_validate_ctx *vc, const char *schema)
 	FYJS_EXPORT;
@@ -111,6 +127,16 @@ struct fy_parse_cfg *
 fyjs_parse_cfg(struct fyjs_validate_ctx *vc,
 	       const struct fy_parse_cfg *cfg_template,
 	       struct fy_parse_cfg *cfg_fill)
+	FYJS_EXPORT;
+
+int
+fyjs_validate_simple_node(struct fy_node *fyn, enum fyjs_validation_type vt,
+			  struct fy_node *fyn_schema, char **logp)
+	FYJS_EXPORT;
+
+int
+fyjs_validate_simple_str(struct fy_node *fyn, enum fyjs_validation_type vt,
+			 const char *schema, char **logp)
 	FYJS_EXPORT;
 
 /* returned when all is fine */
@@ -132,6 +158,7 @@ fyjs_parse_cfg(struct fyjs_validate_ctx *vc,
 /* anyof invalids */
 #define INVALID_ANYOF_NO_MATCH			500
 /* properties invalids */
+#define INVALID_PROPERTY			600
 /* pattern invalids */
 #define INVALID_PATTERN_NO_MATCH		700
 /* string length invalids */
@@ -140,6 +167,8 @@ fyjs_parse_cfg(struct fyjs_validate_ctx *vc,
 /* boolean invalids */
 #define INVALID_BOOLEAN_FALSE			900
 /* items invalids */
+#define INVALID_ITEMS_NO_MATCH			1000
+#define INVALID_ADDITIONAL_ITEMS_NO_MATCH	1001
 /* contains invalids */
 #define INVALID_CONTAINS_NONE			1100
 #define INVALID_CONTAINS_TOO_MANY		1101
@@ -157,7 +186,7 @@ fyjs_parse_cfg(struct fyjs_validate_ctx *vc,
 /* allof invalids */
 #define INVALID_ALLOF_NO_MATCH			1600
 /* required invalids */
-#define INVALID_REQUIRED_DEP_MISSING		1700
+#define INVALID_REQUIRED_MISSING		1700
 /* oneof invalids */
 #define INVALID_ONEOF_NO_MATCH			1800
 #define INVALID_ONEOF_MANY_MATCHES		1801
@@ -187,20 +216,27 @@ fyjs_parse_cfg(struct fyjs_validate_ctx *vc,
 #define INVALID_FORMAT_IDN_HOSTNAME		2607
 #define INVALID_FORMAT_EMAIL			2608
 #define INVALID_FORMAT_IDN_EMAIL		2609
-#define INVALID_FORMAT_URI			2610
-#define INVALID_FORMAT_JSON_POINTER		2611
-#define INVALID_FORMAT_RELJSON_POINTER		2612
+#define INVALID_FORMAT_IRI			2610
+#define INVALID_FORMAT_IRI_REFERENCE		2611
+#define INVALID_FORMAT_URI			2612
+#define INVALID_FORMAT_URI_REFERENCE		2613
+#define INVALID_FORMAT_URI_TEMPLATE		2614
+#define INVALID_FORMAT_JSON_POINTER		2615
+#define INVALID_FORMAT_RELJSON_POINTER		2616
 
 /* generic error returns */
-#define ERROR					-1
+#define ERROR_INTERNAL_UNKNOWN			-1
 #define ERROR_INTERNAL_OUT_OF_MEMORY		-2
-#define ERROR_REF_NOT_STR			-3
-#define ERROR_REF_NO_HASH			-4
-#define ERROR_REF_EXTERNAL_NOT_SUPP		-5
-#define ERROR_REF_BAD_PATH			-6
-#define ERROR_REF_BAD_PTR			-7
-#define ERROR_REF_BAD_URI			-8
-#define ERROR_ID_BAD_URI			-9
+#define ERROR_INTERNAL_ARGS			-3
+
+/* ref walks */
+#define ERROR_REF_NOT_STR			-50
+#define ERROR_REF_BAD_PATH			-51
+#define ERROR_REF_BAD_URI_REF			-52
+#define ERROR_REF_BAD_ID			-53
+#define ERROR_REF_NOT_FOUND			-54
+#define ERROR_REF_NOT_FOUND_REMOTE		-55
+#define ERROR_REF_NOT_FOUND_FILE		-56
 
 /* type errors */
 #define ERROR_TYPE_NOT_SCALAR_OR_SEQ		-100
@@ -210,7 +246,6 @@ fyjs_parse_cfg(struct fyjs_validate_ctx *vc,
 /* numerics errors */
 #define ERROR_NUMERIC_CONSTRAINT_NAN		-400
 #define ERROR_MULTIPLEOF_LEQ_ZERO		-401
-#define ERROR_NUMERIC_ILLEGAL_KEYWORD		-402
 /* anyof errors */
 #define ERROR_ANYOF_BAD_SEQ			-500
 /* properties errors */
@@ -218,15 +253,12 @@ fyjs_parse_cfg(struct fyjs_validate_ctx *vc,
 #define ERROR_PROPERTIES_BAD_KEY		-601
 #define ERROR_PROPERTIES_BAD_VALUE		-602
 /* pattern errors */
-#define ERROR_PATTERN_NOT_SCALAR		-700
-#define ERROR_PATTERN_NOT_STRING		-701
-#define ERROR_PATTERN_IS_BAD			-702
+#define ERROR_PATTERN_NOT_STRING		-700
+#define ERROR_PATTERN_IS_BAD			-701
 /* string length errors */
 #define ERROR_STRLEN_CONSTRAINT_NOT_INT		-800
 #define ERROR_STRLEN_CONSTRAINT_NEG		-801
-#define ERROR_STRLEN_ILLEGAL_KEYWORD		-802
 /* boolean errors */
-#define ERROR_BOOLEAN_NOT_BOOLEAN		-900
 /* items errors */
 /* contains errors */
 #define ERROR_CONTAINS_MIN_NOT_INT		-1100
@@ -247,40 +279,43 @@ fyjs_parse_cfg(struct fyjs_validate_ctx *vc,
 #define ERROR_MAX_PROPERTIES_OVERFLOW		-1403
 /* dependencies errors */
 #define ERROR_DEPENDENCIES_NOT_OBJ		-1500
-#define ERROR_DEPENDENCIES_BAD_KEY		-1501
-#define ERROR_DEPENDENCIES_BAD_VALUE		-1502
-#define ERROR_DEPENDENCIES_DEP_NOT_STR		-1503
-#define ERROR_DEPENDENCIES_DEP_IS_DUP		-1504
-#define ERROR_DEPENDENCIES_SVAL_NOT_OBJ		-1505
+#define ERROR_DEPENDENCIES_BAD_VALUE		-1501
+#define ERROR_DEPENDENCIES_DEP_NOT_STR		-1502
 /* allof errors */
 #define ERROR_ALLOF_BAD_SEQ			-1600
 /* required errors */
 #define ERROR_REQUIRED_NOT_ARRAY		-1700
 #define ERROR_REQUIRED_REQ_NOT_STR		-1701
 #define ERROR_REQUIRED_REQ_IS_DUP		-1702
-#define ERROR_REQUIRED_SVAL_NOT_OBJ		-1703
 /* oneof errors */
 #define ERROR_ONEOF_BAD_SEQ			-1800
 /* not errors */
 /* if/then/else errors */
 /* property_names errors */
-#define ERROR_PROPNAMES_BAD_KEY			-2200
 /* pattern properties error */
 #define ERROR_PATTERNPROPS_NOT_OBJ		-2300
-#define ERROR_PATTERNPROPS_BAD_KEY		-2301
-#define ERROR_PATTERNPROPS_BAD_PATTERN		-2302
+#define ERROR_PATTERNPROPS_BAD_PATTERN		-2301
 /* content_encoding errors */
 #define ERROR_CONTENTENC_NOT_STR		-2400
 #define ERROR_CONTENTENC_BAD			-2401
 /* content_media_type errors */
 #define ERROR_CONTENTMT_NOT_STR			-2500
-#define ERROR_CONTENTMT_BAD			-2501
 /* format errors */
 #define ERROR_FORMAT_NOT_STRING			-2600
 
 #define IS_VALID(x)	((x) == VALID)
 #define IS_INVALID(x)	((x) > 0)
 #define IS_ERROR(x)	((x) < 0)
+
+#define IS_ERROR_INTERNAL(x) \
+		({ \
+		 	int _x = (x); \
+			_x < 0 && _x > -100; \
+		})
+
+const char *
+fyjs_error_text(int error)
+	FYJS_EXPORT;
 
 #ifdef __cplusplus
 }

@@ -53,6 +53,8 @@ fi
 AC_SUBST(ACLOCAL_AMFLAGS, "-I m4")
 
 # pkg-config
+export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$prefix/lib/pkgconfig"
+AC_MSG_NOTICE([$prefix])
 PKG_PROG_PKG_CONFIG
 
 AC_LTDL_ENABLE_INSTALL

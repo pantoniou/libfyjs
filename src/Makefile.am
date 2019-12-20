@@ -5,7 +5,7 @@ AM_CFLAGS =
 
 lib_LTLIBRARIES = libfyjs-@MAJOR@.@MINOR@.la
 libfyjs_@MAJOR@_@MINOR@_la_SOURCES = \
-	lib/fy-jsonschema.c \
+	lib/fy-jsonschema.c lib/fy-jsonschema.h \
 	lib/numerics.h \
 	lib/fy-uri.c lib/fy-uri.h \
 	lib/fy-curl.c lib/fy-curl.h \
@@ -43,6 +43,18 @@ fyjs_tool_CPPFLAGS = $(AM_CPPFLAGS) \
 fyjs_tool_LDADD = $(AM_LDADDR) libfyjs-@MAJOR@.@MINOR@.la
 fyjs_tool_CFLAGS = $(AM_CFLAGS) $(LIBFYAML_CFLAGS)
 fyjs_tool_LDFLAGS = $(AM_LDFLAGS) $(LIBFYAML_LIBS)
+
+noinst_PROGRAMS += fyjs-simple-validate
+
+fyjs_simple_validate_SOURCES = \
+	simple-validate/simple-validate.c \
+	valgrind/fy-valgrind.h
+
+fyjs_simple_validate_CPPFLAGS = $(AM_CPPFLAGS) \
+		     -I$(top_srcdir)/src/valgrind
+fyjs_simple_validate_LDADD = $(AM_LDADDR) libfyjs-@MAJOR@.@MINOR@.la
+fyjs_simple_validate_CFLAGS = $(AM_CFLAGS) $(LIBFYAML_CFLAGS)
+fyjs_simple_validate_LDFLAGS = $(AM_LDFLAGS) $(LIBFYAML_LIBS)
 
 include_HEADERS = \
 	$(top_srcdir)/include/libfyjs.h

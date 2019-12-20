@@ -34,6 +34,15 @@ struct remote {
 
 TAILQ_HEAD(remote_list, remote);
 
+struct result_node {
+	TAILQ_ENTRY(result_node) entry;
+	bool nofree;
+	char *msg;
+	struct fyjs_result r;
+};
+
+TAILQ_HEAD(result_list, result_node);
+
 typedef int (*validate_func)(struct fyjs_validate_ctx *vc, struct fy_node *fyn,
 			    struct fy_node *fynt, struct fy_node *fynt_v);
 
@@ -59,10 +68,16 @@ struct fyjs_validate_ctx {
 
 	struct remote_list rl;
 
-	int error;
-	struct fy_node *error_node;
-	struct fy_node *error_rule_node;
-	struct fy_node *error_specific_rule_node;
+	struct result_list results;
+	/* out of memory special area */
+	struct {
+		struct result_node rn[8];
+		char buf[512];
+		unsigned int rn_next;
+		unsigned int rn_buf_next;
+	} oom;
+	struct result_node out_of_memory_rn;
+	char out_of_memory_result_buffer[512];
 
 	/* those may change due to spec evolution */
 	const char *id_str;		/* $id */
@@ -71,5 +86,14 @@ struct fyjs_validate_ctx {
 	const struct validate_desc *vd_props;
 	const struct validate_desc *vd_formats;
 };
+
+int fyjs_verror(struct fyjs_validate_ctx *vc, int error,
+	        struct fy_node *error_node, struct fy_node *error_rule,
+	        const char *fmt, va_list ap);
+
+int fyjs_error(struct fyjs_validate_ctx *vc, int error,
+	       struct fy_node *error_node, struct fy_node *error_rule,
+	       const char *fmt, ...)
+	__attribute__((format(printf, 5, 6)));
 
 #endif

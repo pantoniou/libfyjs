@@ -156,11 +156,17 @@ static int text_to_validation_type(const char *str)
 	return  -1;
 }
 
+static void no_diag_output_fn(struct fy_diag *diag, void *user,
+				  const char *buf, size_t len)
+{
+	/* nothing */
+}
+
 int main(int argc, char *argv[])
 {
 	struct fy_parse_cfg pcfg;
 	struct fyjs_validate_ctx *vc = NULL;
-	struct fy_diag *diag;
+	struct fy_diag *diag = NULL;
 	int ret = EXIT_FAILURE, rc, opt, lidx;
 	char *progname;
 	char *s, *tdir;
@@ -173,7 +179,6 @@ int main(int argc, char *argv[])
 	struct fy_document *fyd_cache = NULL;
 	int tool_mode = OPT_TOOL;
 	struct fy_diag_cfg dcfg;
-	FILE *fp = NULL;
 
 	fy_valgrind_check(&argc, &argv);
 
@@ -310,10 +315,14 @@ int main(int argc, char *argv[])
 
 	cfg.verbose = !quiet && debug_level > 0;
 
-	fp = stderr;
 	fy_diag_cfg_default(&dcfg);
-	dcfg.fp = fp;
-	dcfg.colorize = isatty(fileno(stderr)) == 1;
+	if (!quiet) {
+		dcfg.fp = stderr;
+		dcfg.colorize = isatty(fileno(stderr)) == 1;
+	} else {
+		dcfg.output_fn = no_diag_output_fn;
+		dcfg.fp = NULL;
+	}
 
 	diag = fy_diag_create(&dcfg);
 	if (!diag) {

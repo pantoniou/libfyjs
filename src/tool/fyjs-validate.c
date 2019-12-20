@@ -69,8 +69,10 @@ int do_validate(struct fyjs_validate_ctx *vc, int argc, char *argv[])
 				printf("OK %s\n", validate_file);
 		} else {
 			any_failed = true;	
-			if (!quiet)
+			if (!quiet) {
+				fyjs_results_report(vc);
 				printf("FAIL %s - failed to validate file\n", validate_file);
+			}
 		}
 
 		fy_document_destroy(fyd);

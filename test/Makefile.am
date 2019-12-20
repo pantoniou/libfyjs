@@ -50,7 +50,7 @@ distclean-local:
 
 fastcheck-local: test-suite-data spec
 	@echo fastcheck-local
-	$(top_builddir)/src/fyjs-tool --testsuite \
+	$(top_builddir)/src/fyjs-tool --testsuite -q \
 		-r "http://localhost:1234/,test-suite-data/remotes/" \
 		test-suite-data/tests/latest/*.json \
 		test-suite-data/tests/latest/optional/*.json \

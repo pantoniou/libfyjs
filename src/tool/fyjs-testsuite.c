@@ -147,6 +147,12 @@ validate_testcase(struct fyjs_validate_ctx *vc,
 				result = valid;
 			}
 
+			/* report the results only if they differ from the expected */
+			if (result != valid || !quiet)
+				fyjs_results_report(vc);
+
+			fyjs_results_clear(vc);
+
 			result_str = result == valid ?
 					(!tap_mode ? "PASS" : "ok") :
 					(!tap_mode ? "FAIL" : "not ok");

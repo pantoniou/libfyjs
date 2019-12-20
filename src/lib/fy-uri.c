@@ -597,23 +597,6 @@ bool uri_falls_under(const struct fy_uri *uripa, const struct fy_uri *uripb)
 	return !memcmp(uripa->nslug, uripb->nslug, uripa->nslug_len);
 }
 
-void dump_uri(const char *banner, const struct fy_uri *urip)
-{
-	fprintf(stderr, "%s: URI=%.*s%s%.*s%s%.*s%s%.*s%s%.*s%s%.*s%s%.*s%s%.*s%s%.*s%s%.*s%s%.*s\n",
-			banner,
-			(int)urip->uri_len, urip->uri,
-			urip->scheme ? " scheme=" : "", (int)urip->scheme_len, urip->scheme,
-			urip->userinfo ? " userinfo=" : "", (int)urip->userinfo_len, urip->userinfo,
-			urip->host ? " host=" : "", (int)urip->host_len, urip->host,
-			urip->port ? " port=" : "", (int)urip->port_len, urip->port,
-			urip->authority ? " authority=" : "", (int)urip->authority_len, urip->authority,
-			urip->path ? " path=" : "", (int)urip->path_len, urip->path,
-			urip->nslug ? " nslug=" : "", (int)urip->nslug_len, urip->nslug,
-			urip->slug ? " slug=" : "", (int)urip->slug_len, urip->slug,
-			urip->query ? " query=" : "", (int)urip->query_len, urip->query,
-			urip->fragment ? " fragment=" : "", (int)urip->fragment_len, urip->fragment);
-}
-
 /*
 json-pointer    = *( "/" reference-token )
 reference-token = *( unescaped / escaped )
@@ -684,7 +667,6 @@ bool is_valid_json_pointer(const char *str)
 
 	len = strlen(str);
 	rc = is_json_pointer(str, len, 0);
-	// fprintf(stderr, "%s: rc=%d - '%s'\n", __func__, rc, str);
 	return rc == (int)len;
 }
 

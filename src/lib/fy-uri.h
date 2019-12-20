@@ -66,8 +66,6 @@ bool uri_fragment_eq(const struct fy_uri *uripa, const struct fy_uri *uripb);
 bool uri_path_eq(const struct fy_uri *uripa, const struct fy_uri *uripb);
 bool uri_falls_under(const struct fy_uri *uripa, const struct fy_uri *uripb);
 
-void dump_uri(const char *banner, const struct fy_uri *urip);
-
 static inline size_t
 utf8_width_by_first_octet(uint8_t c)
 {
