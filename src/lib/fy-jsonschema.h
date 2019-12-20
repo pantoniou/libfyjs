@@ -47,6 +47,7 @@ struct fyjs_validate_ctx {
 	struct fyjs_validate_cfg cfg;
 	enum fyjs_validation_type type;
 	bool verbose;
+	struct fy_diag *diag;
 
 	void *curl_handle;
 	bool pcre_utf8;

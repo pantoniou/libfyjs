@@ -158,7 +158,9 @@ static int text_to_validation_type(const char *str)
 
 int main(int argc, char *argv[])
 {
+	struct fy_parse_cfg pcfg;
 	struct fyjs_validate_ctx *vc = NULL;
+	struct fy_diag *diag;
 	int ret = EXIT_FAILURE, rc, opt, lidx;
 	char *progname;
 	char *s, *tdir;
@@ -170,6 +172,8 @@ int main(int argc, char *argv[])
 	const char *read_cache = NULL, *write_cache = NULL;
 	struct fy_document *fyd_cache = NULL;
 	int tool_mode = OPT_TOOL;
+	struct fy_diag_cfg dcfg;
+	FILE *fp = NULL;
 
 	fy_valgrind_check(&argc, &argv);
 
@@ -306,6 +310,18 @@ int main(int argc, char *argv[])
 
 	cfg.verbose = !quiet && debug_level > 0;
 
+	fp = stderr;
+	fy_diag_cfg_default(&dcfg);
+	dcfg.fp = fp;
+	dcfg.colorize = isatty(fileno(stderr)) == 1;
+
+	diag = fy_diag_create(&dcfg);
+	if (!diag) {
+		fprintf(stderr, "Failed to create diagnostic object\n");
+		goto out;
+	}
+
+	cfg.diag = diag;
 	vc = fyjs_context_create(&cfg);
 	if (!vc) {
 		fprintf(stderr, "Failed to create validation context\n");
@@ -314,8 +330,10 @@ int main(int argc, char *argv[])
 
 	if (read_cache) {
 		fyd_cache = !strcmp(read_cache, "-") ?
-				fy_document_build_from_fp(&cache_cfg, stdin) :
-				fy_document_build_from_file(&cache_cfg, read_cache);
+				fy_document_build_from_fp(
+					fyjs_parse_cfg(vc, &cache_cfg, &pcfg), stdin) :
+				fy_document_build_from_file(
+					fyjs_parse_cfg(vc, &cache_cfg, &pcfg), read_cache);
 
 		if (fyd_cache) {
 			rc = fyjs_context_set_cache(vc, fyd_cache);
@@ -369,6 +387,8 @@ out:
 		}
 		fy_document_destroy(fyd_cache);
 	}
+
+	fy_diag_destroy(diag);
 
 	return ret;
 }

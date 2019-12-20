@@ -61,6 +61,15 @@ static inline const struct fy_parse_cfg *schema_cfg(const char *schema)
 		&json_doc_cfg : &doc_cfg;
 }
 
+struct fy_parse_cfg *
+fyjs_parse_cfg(struct fyjs_validate_ctx *vc, const struct fy_parse_cfg *cfg_template,
+       struct fy_parse_cfg *cfg_fill)
+{
+	*cfg_fill = *cfg_template;
+	cfg_fill->diag = vc->diag;
+	return cfg_fill;
+}
+
 static inline const char *ctime_chomp(const time_t *utc_time, char *buf)
 {
 	char *p, *e;
@@ -666,15 +675,12 @@ static int validate_numeric(struct fyjs_validate_ctx *vc, struct fy_node *fyn, s
 		}
 	} else if (!strcmp(keyword, "maximum")) {
 
-#if 1
+		/* draft4 */
 		is_exclusive = (fynt_exclusive = fy_node_mapping_lookup_value_by_simple_key(
-				fynt, "exclusiveMaximum", FY_NT)) &&
-		    validate_type_node(fynt_exclusive) == fyjs_boolean &&
-		    (exclusive_str = fy_node_get_scalar0(fynt_exclusive)) != NULL &&
-		    !strcmp(exclusive_str, "true");
-#else
-		is_exclusive = false;
-#endif
+					fynt, "exclusiveMaximum", FY_NT)) &&
+				validate_type_node(fynt_exclusive) == fyjs_boolean &&
+				(exclusive_str = fy_node_get_scalar0(fynt_exclusive)) != NULL &&
+				!strcmp(exclusive_str, "true");
 
 		cmp = fyjs_numeric_cmp(value, constraint);
 
@@ -694,15 +700,12 @@ static int validate_numeric(struct fyjs_validate_ctx *vc, struct fy_node *fyn, s
 		}
 	} else if (!strcmp(keyword, "minimum")) {
 
-#if 1
+		/* draft4 */
 		is_exclusive = (fynt_exclusive = fy_node_mapping_lookup_value_by_simple_key(
-				fynt, "exclusiveMinimum", FY_NT)) &&
-		    validate_type_node(fynt_exclusive) == fyjs_boolean &&
-		    (exclusive_str = fy_node_get_scalar0(fynt_exclusive)) != NULL &&
-		    !strcmp(exclusive_str, "true");
-#else
-		is_exclusive = false;
-#endif
+					fynt, "exclusiveMinimum", FY_NT)) &&
+				validate_type_node(fynt_exclusive) == fyjs_boolean &&
+				(exclusive_str = fy_node_get_scalar0(fynt_exclusive)) != NULL &&
+				!strcmp(exclusive_str, "true");
 
 		cmp = fyjs_numeric_cmp(value, constraint);
 
@@ -1805,6 +1808,7 @@ static int validate_content_media_type(struct fyjs_validate_ctx *vc, struct fy_n
 	char *decoded = NULL;
 	size_t decoded_len = -1;
 	struct fy_document *fyd;
+	struct fy_parse_cfg pcfg;
 	int ret;
 
 	fynt_cmt = fynt_v;
@@ -1842,7 +1846,9 @@ static int validate_content_media_type(struct fyjs_validate_ctx *vc, struct fy_n
 
 	ret = INVALID_CONTENTMT_BAD;
 	if (ascii_streq(cmt_str, "application/json")) {
-		fyd = fy_document_build_from_string(&json_doc_cfg, value_str, strlen(value_str));
+		fyd = fy_document_build_from_string(
+				fyjs_parse_cfg(vc, &json_doc_cfg, &pcfg),
+				value_str, strlen(value_str));
 		if (fyd)
 			ret = VALID;
 		fy_document_destroy(fyd);
@@ -2752,6 +2758,7 @@ lookup_for_uri_match(struct fyjs_validate_ctx *vc,
 struct fy_node *deref_ref(struct fyjs_validate_ctx *vc, struct fy_node *fynt, const char *ref_str,
 			  struct fy_node **fynt_root2p)
 {
+	struct fy_parse_cfg pcfg;
 	struct fy_node *fynt_root = vc->fynt_root;
 	struct fy_node *fynt_parent, *fynt_match, *fynt_iter, *fynt_root2 = NULL;
 	struct fy_node *fynt_content;
@@ -2982,7 +2989,9 @@ do_cache:
 			goto err_out;
 		}
 
-		fyd = fy_document_build_from_file(schema_cfg(newfile), newfile);
+		fyd = fy_document_build_from_file(
+				fyjs_parse_cfg(vc, schema_cfg(newfile), &pcfg),
+				newfile);
 
 		/* loaded */
 		if (fyd) {
@@ -3273,14 +3282,18 @@ void fyjs_context_cleanup(struct fyjs_validate_ctx *vc)
 		TAILQ_REMOVE(&vc->rl, r, entry);
 		remote_destroy(r);
 	}
+
+	fy_diag_unref(vc->diag);
 }
 
 int fyjs_context_reset_cache(struct fyjs_validate_ctx *vc)
 {
 	struct fy_node *fyn;
+	struct fy_parse_cfg pcfg;
 
 	fy_document_destroy(vc->fyd_cache);
-	vc->fyd_cache = fy_document_create(&doc_cfg);
+	vc->fyd_cache = fy_document_create(
+			fyjs_parse_cfg(vc, &doc_cfg, &pcfg));
 	if (!vc->fyd_cache) {
 		fprintf(stderr, "%s: fy_document_create() failed\n", __func__);
 		goto err_out;
@@ -3308,6 +3321,8 @@ int fyjs_context_setup(struct fyjs_validate_ctx *vc,
 {
 	int rc, config, i;
 	struct remote *r;
+	struct fy_diag_cfg dcfg;
+	struct fy_diag *diag;
 
 	if (!vc || !cfg)
 		return -1;
@@ -3315,6 +3330,18 @@ int fyjs_context_setup(struct fyjs_validate_ctx *vc,
 	memset(vc, 0, sizeof(*vc));
 
 	vc->cfg = *cfg;
+
+	diag = cfg->diag;
+	if (!diag) {
+		fy_diag_cfg_default(&dcfg);
+		diag = fy_diag_create(&dcfg);
+		if (!diag)
+			return -1;
+	} else
+		fy_diag_ref(diag);
+
+	vc->diag = diag;
+
 	TAILQ_INIT(&vc->rl);
 
 	vc->type = cfg->type;
@@ -3365,7 +3392,6 @@ err_out:
 	fyjs_context_cleanup(vc);
 	return -1;
 }
-
 
 struct fyjs_validate_ctx *
 fyjs_context_create(const struct fyjs_validate_cfg *cfg)
@@ -3516,6 +3542,7 @@ fyjs_load_schema_document(struct fyjs_validate_ctx *vc, const char *schema)
 	struct fy_node *fyn, *fynt_content;
 	struct fy_uri urip;
 	const struct fy_parse_cfg *cfg;
+	struct fy_parse_cfg pcfg;
 	int rc;
 	time_t utc_time = (time_t)-1;
 	struct stat st;
@@ -3527,7 +3554,7 @@ fyjs_load_schema_document(struct fyjs_validate_ctx *vc, const char *schema)
 	if (!vc || !schema)
 		return NULL;
 
-	cfg = schema_cfg(schema);
+	cfg = fyjs_parse_cfg(vc, schema_cfg(schema), &pcfg);
 
 	/* if it's a URL get it via CURL */
 	rc = fy_parse_uri_ext(schema, &urip, 0);

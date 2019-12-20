@@ -29,6 +29,7 @@ static const struct fy_parse_cfg doc_cfg = {
 int do_validate(struct fyjs_validate_ctx *vc, int argc, char *argv[])
 {
 	struct fy_document *fyd = NULL, *fyd_schema = NULL;
+	struct fy_parse_cfg pcfg;
 	const char *validate_file;
 	int i, rc = -1;
 	bool any_failed = true;
@@ -48,7 +49,9 @@ int do_validate(struct fyjs_validate_ctx *vc, int argc, char *argv[])
 	for (i = 0; i < argc; i++) {
 		validate_file = argv[i];
 
-		fyd = fy_document_build_from_file(&doc_cfg, validate_file);
+		fyd = fy_document_build_from_file(
+				fyjs_parse_cfg(vc, &doc_cfg, &pcfg),
+				validate_file);
 		if (!fyd) {
 			if (!quiet)
 				printf("FAIL %s - failed to load file\n", validate_file);

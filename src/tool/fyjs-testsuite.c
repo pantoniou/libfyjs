@@ -76,6 +76,7 @@ validate_testcase(struct fyjs_validate_ctx *vc,
 		  int this_execute, int this_tap_start,
 		  unsigned int flags)
 {
+	struct fy_parse_cfg pcfg;
 	bool dry_run = !!(flags & TEST_DRY_RUN);
 	bool tap_mode = !!(flags & TEST_TAP_MODE);
 	struct fy_document *fyd_testschema;
@@ -88,7 +89,8 @@ validate_testcase(struct fyjs_validate_ctx *vc,
 	int rc, test;
 	const char *s;
 
-	fyd_testschema = fy_document_build_from_string(&doc_cfg,
+	fyd_testschema = fy_document_build_from_string(
+			fyjs_parse_cfg(vc, &doc_cfg, &pcfg),
 			(const char *)g_testschema_data, g_testschema_size);
 	if (!fyd_testschema) {
 		fprintf(stderr, "failed to build test schema document");
@@ -169,6 +171,7 @@ err_out_rc:
 static int
 testsuite_count(struct fyjs_validate_ctx *vc, int argc, char *argv[])
 {
+	struct fy_parse_cfg pcfg;
 	struct fy_document *fyd = NULL;
 	const char *validate_file;
 	int i, j, count;
@@ -177,7 +180,9 @@ testsuite_count(struct fyjs_validate_ctx *vc, int argc, char *argv[])
 	for (i = 0; i < argc; i++, count += j) {
 		validate_file = argv[i];
 
-		fyd = fy_document_build_from_file(&doc_cfg, validate_file);
+		fyd = fy_document_build_from_file(
+				fyjs_parse_cfg(vc, &doc_cfg, &pcfg),
+				validate_file);
 		if (!fyd) {
 			fprintf(stderr, "failed to load test file %s\n", validate_file);
 			goto err_out;
@@ -202,6 +207,7 @@ err_out:
 
 int do_testsuite(struct fyjs_validate_ctx *vc, int argc, char *argv[])
 {
+	struct fy_parse_cfg pcfg;
 	struct fy_document *fyd = NULL;
 	const char *validate_file;
 	int i, j, k, count, start, end, rc = -1;
@@ -228,7 +234,9 @@ int do_testsuite(struct fyjs_validate_ctx *vc, int argc, char *argv[])
 	for (i = 0; i < argc; i++, count += j, k += j) {
 		validate_file = argv[i];
 
-		fyd = fy_document_build_from_file(&doc_cfg, validate_file);
+		fyd = fy_document_build_from_file(
+				fyjs_parse_cfg(vc, &doc_cfg, &pcfg),
+				validate_file);
 		if (!fyd) {
 			fprintf(stderr, "failed to load test file %s\n", validate_file);
 			goto err_out;

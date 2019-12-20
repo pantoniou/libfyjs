@@ -62,39 +62,56 @@ struct fyjs_validate_remote_cfg {
 struct fyjs_validate_cfg {
 	enum fyjs_validation_type type;
 	const struct fyjs_validate_remote_cfg *remotes;
+	struct fy_diag *diag;
 	bool verbose : 1;
 };
 
-FYJS_EXPORT struct fyjs_validate_ctx *
-fyjs_context_create(const struct fyjs_validate_cfg *cfg);
+struct fyjs_validate_ctx *
+fyjs_context_create(const struct fyjs_validate_cfg *cfg)
+	FYJS_EXPORT;
 
-FYJS_EXPORT void
-fyjs_context_destroy(struct fyjs_validate_ctx *vc);
+void
+fyjs_context_destroy(struct fyjs_validate_ctx *vc)
+	FYJS_EXPORT;
 
-FYJS_EXPORT int
-fyjs_reset_cache(struct fyjs_validate_ctx *vc);
+int
+fyjs_reset_cache(struct fyjs_validate_ctx *vc)
+	FYJS_EXPORT;
 
-FYJS_EXPORT int
-fyjs_context_set_cache(struct fyjs_validate_ctx *vc, struct fy_document *fyd);
+int
+fyjs_context_set_cache(struct fyjs_validate_ctx *vc, struct fy_document *fyd)
+	FYJS_EXPORT;
 
-FYJS_EXPORT struct fy_document *
-fyjs_context_get_cache(struct fyjs_validate_ctx *vc);
+struct fy_document *
+fyjs_context_get_cache(struct fyjs_validate_ctx *vc)
+	FYJS_EXPORT;
 
-FYJS_EXPORT bool
-fyjs_context_is_cache_modified(struct fyjs_validate_ctx *vc);
+bool
+fyjs_context_is_cache_modified(struct fyjs_validate_ctx *vc)
+	FYJS_EXPORT;
 
-FYJS_EXPORT int
+int
 fyjs_validate(struct fyjs_validate_ctx *vc,
-	      struct fy_node *fyn, struct fy_node *fynt);
+	      struct fy_node *fyn, struct fy_node *fynt)
+	FYJS_EXPORT;
 
-FYJS_EXPORT struct fy_document *
-fyjs_load_schema(struct fyjs_validate_ctx *vc, const char *schema);
+struct fy_document *
+fyjs_load_schema(struct fyjs_validate_ctx *vc, const char *schema)
+	FYJS_EXPORT;
 
-FYJS_EXPORT struct fy_document *
-fyjs_load_schema_document(struct fyjs_validate_ctx *vc, const char *schema);
+struct fy_document *
+fyjs_load_schema_document(struct fyjs_validate_ctx *vc, const char *schema)
+	FYJS_EXPORT;
 
-FYJS_EXPORT void
-fyjs_unload_schema_document(struct fy_document *fyd_schema);
+void
+fyjs_unload_schema_document(struct fy_document *fyd_schema)
+	FYJS_EXPORT;
+
+struct fy_parse_cfg *
+fyjs_parse_cfg(struct fyjs_validate_ctx *vc,
+	       const struct fy_parse_cfg *cfg_template,
+	       struct fy_parse_cfg *cfg_fill)
+	FYJS_EXPORT;
 
 /* returned when all is fine */
 #define VALID					0
