@@ -507,7 +507,7 @@ static const char *get_id(struct fyjs_validate_ctx *vc, struct fy_node *fyn)
 	if (id)
 		return id;
 
-	id = get_value(fyn, "$id");
+	id = get_value(fyn, "id");
 	if (id)
 		return id;
 
@@ -3654,7 +3654,7 @@ skip_rel_ref:
 	if (!urip_ref.authority) {
 		ret = fyjs_error(vc, ERROR_REF_BAD_URI_REF,
 					fyn, fynt_ref,
-					"reference URL witout authority \"%s\"",
+					"reference URL without authority \"%s\"",
 					full_id);
 		goto err_out;
 	}
