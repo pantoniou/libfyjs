@@ -140,24 +140,23 @@ validate_testcase(struct fyjs_validate_ctx *vc,
 
 			if (!dry_run) {
 				rc = fyjs_validate(vc, fyn_data, fyn_schema);
-				if (IS_ERROR(rc))
-					fprintf(stderr, "Unexpected error return %d\n", rc);
 				result = rc == VALID;
 			} else {
 				result = valid;
+				rc = valid ? VALID : INVALID;
 			}
 
 			/* report the results only if they differ from the expected */
-			if (result != valid || !quiet)
+			if (result != valid || IS_ERROR(rc) || !quiet)
 				fyjs_results_report(vc);
 
 			fyjs_results_clear(vc);
 
-			result_str = result == valid ?
+			result_str = result == valid && !IS_ERROR(rc)?
 					(!tap_mode ? "PASS" : "ok") :
 					(!tap_mode ? "FAIL" : "not ok");
 			if (!tap_mode)
-				printf("%s: \"%s\", \"%s\"\n", result_str, schema_str, tests_str);
+				printf("%s: \"%s\", \"%s\", #%d\n", result_str, schema_str, tests_str, test);
 			else
 				printf("%s %d - %s: %s, %s\n",
 						result_str,

@@ -142,6 +142,9 @@ fyjs_validate_simple_str(struct fy_node *fyn, enum fyjs_validation_type vt,
 /* returned when all is fine */
 #define VALID					0
 
+/* generic invalid */
+#define INVALID					1
+
 /* type invalids */
 #define INVALID_TYPE				100
 #define INVALID_TYPE_WRONG			101

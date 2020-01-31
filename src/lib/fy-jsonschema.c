@@ -498,6 +498,22 @@ static const char *get_value(struct fy_node *fyn, const char *path)
 	return value;
 }
 
+static const char *get_id(struct fyjs_validate_ctx *vc, struct fy_node *fyn)
+{
+	const char *id;
+
+	/* try for "$id" followed by "id" */
+	id = get_value(fyn, "$id");
+	if (id)
+		return id;
+
+	id = get_value(fyn, "$id");
+	if (id)
+		return id;
+
+	return NULL;
+}
+
 static struct fy_node *
 get_cache_top_rule(struct fyjs_validate_ctx *vc, struct fy_node *fyn)
 {
@@ -3347,7 +3363,7 @@ lookup_for_uri_match(struct fyjs_validate_ctx *vc,
 	if (vc->verbose)
 		fy_info(vc->diag, "base: %s\n", base);
 
-	id_str = get_value(fynt, vc->id_str);
+	id_str = get_id(vc, fynt);
 	if (id_str) {
 
 		if (vc->verbose)
@@ -3528,7 +3544,7 @@ int deref_ref(struct fyjs_validate_ctx *vc,
 			if (!fynt_parent)
 				break;
 
-			id_str = get_value(fynt_parent, vc->id_str);
+			id_str = get_id(vc, fynt_parent);
 			if (id_str && fy_parse_uri_ext(id_str, &urip_id, URI_REF) == 0) {
 				if (pass == 2) {
 					fynt_ids[i] = fynt_parent;
@@ -3561,7 +3577,7 @@ int deref_ref(struct fyjs_validate_ctx *vc,
 	i = count - 1;
 	if (i >= 0) {
 		fynt_parent = fynt_ids[i--];
-		id_str = get_value(fynt_parent, vc->id_str);
+		id_str = get_id(vc, fynt_parent);
 		if (!id_str) {
 			ret = fyjs_error(vc, ERROR_INTERNAL_OUT_OF_MEMORY,
 					fyn, fynt_parent, "%s:%d @%s",
@@ -3586,7 +3602,7 @@ int deref_ref(struct fyjs_validate_ctx *vc,
 
 		while (i >= 0) {
 			fynt_parent = fynt_ids[i--];
-			id_str = get_value(fynt_parent, vc->id_str);
+			id_str = get_id(vc, fynt_parent);
 			if (!id_str)
 				return fyjs_error(vc, ERROR_INTERNAL_OUT_OF_MEMORY,
 						fyn, fynt_parent, "%s:%d @%s",
@@ -3649,7 +3665,7 @@ do_cache:
 	fynt_root2 = fy_document_root(vc->fyd_cache);
 	iter = NULL;
 	while (!fynt_match && (fynt_iter = fy_node_sequence_iterate(fynt_root2, &iter)) != NULL) {
-		id_str = get_value(fynt_iter, vc->id_str);
+		id_str = get_id(vc, fynt_iter);
 		fynt_content = fy_node_mapping_lookup_value_by_simple_key(fynt_iter, "content", FY_NT);
 		if (!id_str || fy_parse_uri_ext(id_str, &urip_id, URI_REF) != 0 || !fynt_content)
 			continue;
@@ -3931,10 +3947,8 @@ static int validate_one(struct fyjs_validate_ctx *vc, struct fy_node *fyn, struc
 
 	if (fynt_ref) {
 		ret = deref_ref(vc, fyn, fynt, fynt_ref, &fynt_root2, &fynt_deref);
-		if (!fynt_deref) {
-			ret = fyjs_error(vc, ERROR_REF_BAD_PATH, fyn, fynt_ref, NULL);
+		if (!fynt_deref)
 			goto out;
-		}
 
 		if (ref_was_recursive) {
 			recanchor_str = get_value(fynt_deref, "$recursiveAnchor");
@@ -4355,7 +4369,7 @@ fyjs_load_schema_document(struct fyjs_validate_ctx *vc, const char *schema)
 		free(e);
 	}
 
-	id = get_value(fy_document_root(fyd), vc->id_str);
+	id = get_id(vc, fy_document_root(fyd));
 	if (!id)
 		id = schema;
 
