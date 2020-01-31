@@ -1,2 +1,2 @@
 #!/bin/bash
-./testsuite-dir.sh test-suite-data/tests/draft7/optional
+./testsuite-dir.sh test-suite-data/tests/draft6/optional
