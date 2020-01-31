@@ -24,7 +24,10 @@
 
 #include "fy-valgrind.h"
 
+#define SCHEMA_TYPE_DEFAULT		FYJSVT_JSON_SCHEMA_AUTO_DRAFT4_TO_2019_09
+
 static struct option lopts[] = {
+	{"schema-type",		required_argument,	0,	't' },
 	{"version",		no_argument,		0,	'v' },
 	{"help",		no_argument,		0,	'h' },
 	{0,			0,              	0,	 0  },
@@ -35,44 +38,24 @@ static void display_usage(FILE *fp, char *progname)
 	fprintf(fp, "Usage: %s [options] <schema-file> <file-to-validate>\n", progname);
 	fprintf(fp, "\nOptions:\n\n");
 
+	fprintf(fp, "\t--schema-type, -t        : Type of schema (one of jsc-draft[347], \n"
+		    "                             jsc-draft-2019-09, jsc-latest, openapi-2.0, openapi-3.0, \n"
+		    "                             openapi-latest) default is %s\n",
+						fyjs_validation_type_to_str(SCHEMA_TYPE_DEFAULT));
 	fprintf(fp, "\t--version, -v            : Display %s version\n", PACKAGE);
 	fprintf(fp, "\t--help, -h               : Display  help message\n");
 }
-
-#if 0
-static int text_to_validation_type(const char *str)
-{
-	if (!str)
-		return -1;
-
-	if (!strcmp(str, "jsc-draft3") || !strcmp(str, "json-schema-draft3"))
-		return FYJSVT_JSON_SCHEMA_DRAFT3;
-	if (!strcmp(str, "jsc-draft4") || !strcmp(str, "json-schema-draft4"))
-		return FYJSVT_JSON_SCHEMA_DRAFT4;
-	if (!strcmp(str, "jsc-draft6") || !strcmp(str, "json-schema-draft6"))
-		return FYJSVT_JSON_SCHEMA_DRAFT6;
-	if (!strcmp(str, "jsc-draft-2019-09") || !strcmp(str, "json-schema-draft-2019-09"))
-		return FYJSVT_JSON_SCHEMA_DRAFT2019_09;
-	if (!strcmp(str, "jsc-latest") || !strcmp(str, "json-schema-latest"))
-		return FYJSVT_JSON_SCHEMA_LATEST;
-	if (!strcmp(str, "openapi-2.0"))
-		return FYJSVT_OPENAPI_SCHEMA_2_0;
-	if (!strcmp(str, "openapi-3.0"))
-		return FYJSVT_OPENAPI_SCHEMA_3_0;
-	if (!strcmp(str, "openapi-latest"))
-		return FYJSVT_OPENAPI_SCHEMA_LATEST;
-
-	return  -1;
-}
-#endif
 
 int main(int argc, char *argv[])
 {
 	int ret = EXIT_FAILURE, opt, lidx, rc;
 	char *progname, *log = NULL;
 	struct fy_document *fyd_schema, *fyd_file;
+	enum fyjs_validation_type schema_type;
 
 	fy_valgrind_check(&argc, &argv);
+
+	schema_type = SCHEMA_TYPE_DEFAULT;
 
 	/* select the appropriate tool mode */
 	progname = argv[0];
@@ -86,8 +69,20 @@ int main(int argc, char *argv[])
 	if (strlen(progname) > 3 && !memcmp(progname, "lt-", 3))
 		progname += 3;
 
-	while ((opt = getopt_long_only(argc, argv, "d:qr:t:hv", lopts, &lidx)) != -1) {
+	while ((opt = getopt_long_only(argc, argv, "t:hv", lopts, &lidx)) != -1) {
 		switch (opt) {
+		case 't':
+			rc = fyjs_str_to_validation_type(optarg);
+			if (rc < 0) {
+				fprintf(stderr, "bad schema type: %s\n", optarg);
+				return EXIT_FAILURE;
+			}
+			schema_type = rc;
+			if (!fyjs_validation_type_supported(schema_type)) {
+				fprintf(stderr, "unsupported schema type: %s\n", optarg);
+				return EXIT_FAILURE;
+			}
+			break;
 		case 'h' :
 		default:
 			if (opt != 'h')
@@ -118,7 +113,7 @@ int main(int argc, char *argv[])
 	}
 
 	rc = fyjs_validate_simple_node(
-			fy_document_root(fyd_file), FYJSVT_JSON_SCHEMA_LATEST ,
+			fy_document_root(fyd_file), schema_type,
 			fy_document_root(fyd_schema), &log);
 
 	if (rc != VALID) {

@@ -49,6 +49,7 @@ enum fyjs_validation_type {
 	FYJSVT_JSON_SCHEMA_DRAFT7,
 	FYJSVT_JSON_SCHEMA_DRAFT2019_09,
 	FYJSVT_JSON_SCHEMA_LATEST = FYJSVT_JSON_SCHEMA_DRAFT2019_09,
+	FYJSVT_JSON_SCHEMA_AUTO_DRAFT4_TO_2019_09,
 	FYJSVT_OPENAPI_SCHEMA_2_0,
 	FYJSVT_OPENAPI_SCHEMA_3_0,
 	FYJSVT_OPENAPI_SCHEMA_LATEST = FYJSVT_OPENAPI_SCHEMA_3_0,
@@ -318,6 +319,18 @@ fyjs_validate_simple_str(struct fy_node *fyn, enum fyjs_validation_type vt,
 
 const char *
 fyjs_error_text(int error)
+	FYJS_EXPORT;
+
+int
+fyjs_str_to_validation_type(const char *str)
+	FYJS_EXPORT;
+
+const char *
+fyjs_validation_type_to_str(enum fyjs_validation_type type)
+	FYJS_EXPORT;
+
+bool
+fyjs_validation_type_supported(enum fyjs_validation_type type)
 	FYJS_EXPORT;
 
 #ifdef __cplusplus

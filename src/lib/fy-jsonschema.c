@@ -4066,6 +4066,70 @@ err_out:
 	return -1;
 }
 
+int fyjs_str_to_validation_type(const char *str)
+{
+	if (!str)
+		return -1;
+
+	if (!strcmp(str, "json-schema-draft3"))
+		return FYJSVT_JSON_SCHEMA_DRAFT3;
+	if (!strcmp(str, "json-schema-draft4"))
+		return FYJSVT_JSON_SCHEMA_DRAFT4;
+	if (!strcmp(str, "json-schema-draft6"))
+		return FYJSVT_JSON_SCHEMA_DRAFT6;
+	if (!strcmp(str, "json-schema-draft2019-09") || !strcmp(str, "json-schema-latest"))
+		return FYJSVT_JSON_SCHEMA_DRAFT2019_09;
+	if (!strcmp(str, "json-schema-draft4-to-2019-09"))
+		return FYJSVT_JSON_SCHEMA_AUTO_DRAFT4_TO_2019_09;
+	if (!strcmp(str, "openapi-2.0"))
+		return FYJSVT_OPENAPI_SCHEMA_2_0;
+	if (!strcmp(str, "openapi-3.0") || !strcmp(str, "openapi-latest"))
+		return FYJSVT_OPENAPI_SCHEMA_3_0;
+
+	return  -1;
+}
+
+bool fyjs_validation_type_supported(enum fyjs_validation_type type)
+{
+	switch (type) {
+	case FYJSVT_JSON_SCHEMA_DRAFT4:
+	case FYJSVT_JSON_SCHEMA_DRAFT6:
+	case FYJSVT_JSON_SCHEMA_DRAFT7:
+	case FYJSVT_JSON_SCHEMA_DRAFT2019_09:
+	case FYJSVT_JSON_SCHEMA_AUTO_DRAFT4_TO_2019_09:
+		return true;
+	default:
+		break;
+	}
+	/* everything else is not supported (for now) */
+	return false;
+}
+
+const char *
+fyjs_validation_type_to_str(enum fyjs_validation_type type)
+{
+	switch (type) {
+	case FYJSVT_JSON_SCHEMA_DRAFT3:
+		return "json-schema-draft3";
+	case FYJSVT_JSON_SCHEMA_DRAFT4:
+		return "json-schema-draft4";
+	case FYJSVT_JSON_SCHEMA_DRAFT6:
+		return "json-schema-draft6";
+	case FYJSVT_JSON_SCHEMA_DRAFT2019_09:
+		return "json-schema-draft2019-09";
+	case FYJSVT_JSON_SCHEMA_AUTO_DRAFT4_TO_2019_09:
+		return "json-schema-draft4-to-2019-09";
+	case FYJSVT_OPENAPI_SCHEMA_2_0:
+		return "openapi-2.0";
+	case FYJSVT_OPENAPI_SCHEMA_3_0:
+		return "openapi-3.0";
+	default:
+		break;
+	}
+
+	return NULL;
+}
+
 int fyjs_context_setup(struct fyjs_validate_ctx *vc,
 		       const struct fyjs_validate_cfg *cfg)
 {

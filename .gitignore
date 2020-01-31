@@ -43,4 +43,5 @@ fy-jsonschema-*.tar.gz
 .tarball-version
 .deps/
 src/fyjs-tool
+src/fyjs-simple-validate
 libfyjs.pc
