@@ -79,10 +79,6 @@ struct fyjs_validate_ctx {
 	struct result_node out_of_memory_rn;
 	char out_of_memory_result_buffer[512];
 
-	/* those may change due to spec evolution */
-	const char *id_str;		/* $id */
-	const char *schema_str;		/* $schema */
-
 	const struct validate_desc *vd_props;
 	const struct validate_desc *vd_formats;
 };

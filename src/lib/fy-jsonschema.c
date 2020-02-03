@@ -3367,7 +3367,7 @@ lookup_for_uri_match(struct fyjs_validate_ctx *vc,
 	if (id_str) {
 
 		if (vc->verbose)
-			fy_info(vc->diag, "%s: %s\n", vc->id_str, id_str);
+			fy_info(vc->diag, "%s: %s\n", "$id", id_str);
 
 		rc = fy_parse_uri_ext(id_str, &urip_id, URI_REF);
 		if (rc)
@@ -3598,7 +3598,7 @@ int deref_ref(struct fyjs_validate_ctx *vc,
 				(int)urip_id.nslug_len, urip_id.nslug);
 
 		// fy_debug(vc->diag, "start: full_id=%s\n", full_id);
-		// fy_debug(vc->diag, "start: absolute %s=%s\n", vc->id_str, id_str);
+		// fy_debug(vc->diag, "start: absolute %s=%s\n", "$id", id_str);
 
 		while (i >= 0) {
 			fynt_parent = fynt_ids[i--];
@@ -3828,7 +3828,7 @@ do_cache:
 			"\"timestamp\": %llu, "
 			"\"timestamp-human\": \"%s\", "
 			"\"%s\": { } }",
-			vc->id_str, ref_url, origin,
+			"$id", ref_url, origin,
 			(unsigned long long)utc_time,
 			ctime_chomp(&utc_time, ctime_buf),
 			"content");
@@ -4197,9 +4197,6 @@ int fyjs_context_setup(struct fyjs_validate_ctx *vc,
 	if (vc->verbose)
 		fy_info(vc->diag, "pcre: UTF8 is %ssupported\n", vc->pcre_utf8 ? "" : "not ");
 
-	vc->id_str = "$id";
-	vc->schema_str = "$schema";
-
 	vc->vd_props = validators;
 	vc->vd_formats = format_validators;
 
@@ -4450,7 +4447,7 @@ fyjs_load_schema_document(struct fyjs_validate_ctx *vc, const char *schema)
 			"\"timestamp\": %llu, "
 			"\"timestamp-human\": \"%s\", "
 			"\"%s\": { } }",
-			vc->id_str, id, origin,
+			"$id", id, origin,
 			(unsigned long long)utc_time,
 			ctime_chomp(&utc_time, ctime_buf),
 			"content");
