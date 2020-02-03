@@ -1,0 +1,2 @@
+#!/bin/bash
+./testsuite-dir.sh -t json-schema-draft2019-09 test-suite-data/tests/draft2019-09/optional/format

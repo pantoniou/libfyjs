@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "bad schema type: %s\n", optarg);
 				goto out;
 			}
-			cfg.type = j;
+			cfg.type = rc;
 			if (!fyjs_validation_type_supported(cfg.type)) {
 				fprintf(stderr, "unsupported schema type: %s\n", optarg);
 				goto out;

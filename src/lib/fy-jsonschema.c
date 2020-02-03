@@ -931,8 +931,9 @@ static int validate_type(struct fyjs_validate_ctx *vc, struct fy_node *fyn, stru
 		return VALID;
 
 	/* another special case, number with fractional part is zero */
-	if ((vtype_mask & (1U << (int)fyjs_number)) &&
-	    (type_mask & (1U << (int)fyjs_integer))) {
+	if (fyjs_zero_fraction_float_is_integer(vc->type) &&
+		(vtype_mask & (1U << (int)fyjs_number)) &&
+		 (type_mask & (1U << (int)fyjs_integer))) {
 
 		value_str = fy_node_get_scalar0(fyn);
 		if (!value_str)
@@ -4077,6 +4078,8 @@ int fyjs_str_to_validation_type(const char *str)
 		return FYJSVT_JSON_SCHEMA_DRAFT4;
 	if (!strcmp(str, "json-schema-draft6"))
 		return FYJSVT_JSON_SCHEMA_DRAFT6;
+	if (!strcmp(str, "json-schema-draft7"))
+		return FYJSVT_JSON_SCHEMA_DRAFT7;
 	if (!strcmp(str, "json-schema-draft2019-09") || !strcmp(str, "json-schema-latest"))
 		return FYJSVT_JSON_SCHEMA_DRAFT2019_09;
 	if (!strcmp(str, "json-schema-draft4-to-2019-09"))
@@ -4093,6 +4096,24 @@ bool fyjs_validation_type_supported(enum fyjs_validation_type type)
 {
 	switch (type) {
 	case FYJSVT_JSON_SCHEMA_DRAFT4:
+	case FYJSVT_JSON_SCHEMA_DRAFT6:
+	case FYJSVT_JSON_SCHEMA_DRAFT7:
+	case FYJSVT_JSON_SCHEMA_DRAFT2019_09:
+	case FYJSVT_JSON_SCHEMA_AUTO_DRAFT4_TO_2019_09:
+		return true;
+	default:
+		break;
+	}
+	/* everything else is not supported (for now) */
+	return false;
+}
+
+bool fyjs_zero_fraction_float_is_integer(enum fyjs_validation_type type)
+{
+	switch (type) {
+	case FYJSVT_JSON_SCHEMA_DRAFT3:
+	case FYJSVT_JSON_SCHEMA_DRAFT4:
+		return false;
 	case FYJSVT_JSON_SCHEMA_DRAFT6:
 	case FYJSVT_JSON_SCHEMA_DRAFT7:
 	case FYJSVT_JSON_SCHEMA_DRAFT2019_09:

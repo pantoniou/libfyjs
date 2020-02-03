@@ -92,4 +92,6 @@ int fyjs_error(struct fyjs_validate_ctx *vc, int error,
 	       const char *fmt, ...)
 	__attribute__((format(printf, 5, 6)));
 
+bool fyjs_zero_fraction_float_is_integer(enum fyjs_validation_type type);
+
 #endif

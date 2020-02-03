@@ -1,2 +1,2 @@
 #!/bin/bash
-./testsuite-dir.sh test-suite-data/tests/draft4/optional
+./testsuite-dir.sh -t json-schema-draft4 test-suite-data/tests/draft4/optional
